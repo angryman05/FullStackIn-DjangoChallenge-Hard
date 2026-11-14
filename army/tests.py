@@ -80,3 +80,36 @@ class DraftingTests(TestCase):
         self.assertContains(self.client.get(reverse("army:people_list") + "?rank=General"), "Person 3")
         person = Person.objects.get(external_id=3)
         self.assertContains(self.client.get(reverse("army:person_detail", args=[person.pk])), "General")
+
+    def test_frontend_pages_and_contracts(self):
+        with mock.patch.object(tasks, "fetch", fake_api()):
+            tasks.register_people.delay()
+
+        # Import control panel
+        resp_import = self.client.get(reverse("army:people_import"))
+        self.assertEqual(resp_import.status_code, 200)
+        self.assertContains(resp_import, "Peacetime Citizen Importer")
+
+        # Import status JSON
+        resp_status = self.client.get(reverse("army:import_status"))
+        self.assertEqual(resp_status.status_code, 200)
+        status_data = resp_status.json()
+        self.assertIn("status", status_data)
+        self.assertEqual(status_data["processed"], 4)
+
+        # People list page and pagination
+        resp_people = self.client.get(reverse("army:people_list"))
+        self.assertEqual(resp_people.status_code, 200)
+        self.assertContains(resp_people, "Population Registry")
+        self.assertContains(resp_people, "Person 0")
+
+        # Draft Phase 2 GET
+        resp_draft = self.client.get(reverse("army:draft"))
+        self.assertEqual(resp_draft.status_code, 200)
+        self.assertContains(resp_draft, "Phase 2")
+
+        # Custom 404
+        resp_404 = self.client.get("/nonexistent-tactical-sector/")
+        self.assertEqual(resp_404.status_code, 404)
+        self.assertContains(resp_404, "404", status_code=404)
+        self.assertContains(resp_404, "RADAR CONTACT LOST", status_code=404)

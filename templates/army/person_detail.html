@@ -1,0 +1,76 @@
+{% extends "army/base.html" %}
+{% load static %}
+
+{% block title %}{{ person.name }} // DOSSIER #{{ person.external_id }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem;">
+      <a href="{% url 'army:people_list' %}" class="btn btn-secondary btn-sm">
+        ← Back to Registry
+      </a>
+      <span class="badge {% if person.is_drafted %}badge-drafted{% else %}badge-idle{% endif %}">
+        {% if person.is_drafted %}ACTIVE SOLDIER{% else %}CIVILIAN CLASSIFICATION{% endif %}
+      </span>
+      {% if "Hellstorm" in person.name %}
+        <span class="key-person-badge">VIP TARGET</span>
+      {% endif %}
+    </div>
+    <h1 class="page-title">
+      <span>🎖</span> Citizen Personnel Dossier
+    </h1>
+    <p class="page-subtitle">Detailed records from database inspection.</p>
+  </div>
+  {% if person.key %}
+    <div style="display: flex; align-items: center; gap: 0.5rem;">
+      <span style="font-size: 0.85rem; color: var(--accent-amber); font-weight: 600;">Phase 2 Key:</span>
+      <button type="button" class="copy-chip" data-copy="{{ person.key }}">
+        {{ person.key }}
+      </button>
+    </div>
+  {% endif %}
+</div>
+
+<!-- Generic Field Inspector Panel -->
+<div class="panel">
+  <div class="panel-header">
+    <h2 class="panel-title">
+      <span>🔍</span> Model Schema & Attribute Inspection (Dynamic Fields)
+    </h2>
+    <span class="text-dim">Generic Property Iteration</span>
+  </div>
+
+  <div class="detail-grid">
+    {% for field in fields %}
+      <div class="detail-item" data-field-name="{{ field.name }}">
+        <div class="detail-key">
+          {{ field.verbose_name }}
+          <span style="color: var(--text-dim); font-size: 0.7rem; font-weight: normal;">({{ field.name }})</span>
+        </div>
+        <div class="detail-val">
+          {% if field.is_key and field.value %}
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span>{{ field.value }}</span>
+              <button type="button" class="copy-chip" data-copy="{{ field.value }}">Copy Key</button>
+            </div>
+          {% elif field.value is None or field.value == "" %}
+            <span class="text-dim">None / Not Set</span>
+          {% else %}
+            <span>{{ field.value }}</span>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div style="display: flex; gap: 1rem; margin-top: 2rem;">
+  <a href="{% url 'army:people_list' %}" class="btn btn-secondary">
+    <span>←</span> Return to Registry
+  </a>
+  <a href="{% url 'army:draft' %}" class="btn btn-primary">
+    <span>⚔</span> Go to Phase 2 Draft
+  </a>
+</div>
+{% endblock %}

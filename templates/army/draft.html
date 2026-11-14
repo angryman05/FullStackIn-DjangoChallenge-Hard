@@ -1,0 +1,138 @@
+{% extends "army/base.html" %}
+{% load static %}
+
+{% block title %}PHASE 2: SOLDIER DRAFTING // WAR SIMULATOR{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      <span>⚔</span> Phase 2: Military Draft Command
+    </h1>
+    <p class="page-subtitle">Mobilize peacetime citizens into combat rank battalions.</p>
+  </div>
+  <div>
+    <span id="draft-status-badge" class="badge badge-idle">IDLE</span>
+  </div>
+</div>
+
+<!-- Phase 2 Instructions & Secret Key Area -->
+<div class="panel" style="border-color: var(--accent-cyan); background: rgba(6, 182, 212, 0.04);">
+  <div class="panel-header" style="border-color: rgba(6, 182, 212, 0.25);">
+    <h2 class="panel-title" style="color: var(--accent-cyan);">
+      <span>📋</span> Operational Directive: Phase 2 Instructions
+    </h2>
+    <span class="badge" style="background: rgba(6, 182, 212, 0.15); color: var(--accent-cyan);">
+      SECRET INSTRUCTIONS DECRYPTED
+    </span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.5rem; margin-bottom: 1.5rem;">
+    <div>
+      <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Phase 2 Access Key
+      </h3>
+      {% if key_person and key_person.key %}
+        <div style="display: flex; align-items: center; gap: 0.75rem;">
+          <button type="button" class="copy-chip" data-copy="{{ key_person.key }}" style="font-size: 1.1rem; padding: 0.5rem 1rem;">
+            {{ key_person.key }}
+          </button>
+          <span style="font-size: 0.8rem; color: var(--accent-emerald);">✓ Discovered on Hellstorm Fireburn</span>
+        </div>
+      {% else %}
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <span class="badge badge-idle">Key Not Yet Discovered</span>
+          <a href="{% url 'army:people_import' %}" style="font-size: 0.8rem;">Run citizen import first →</a>
+        </div>
+      {% endif %}
+    </div>
+
+    <div>
+      <h3 style="font-size: 0.9rem; text-transform: uppercase; color: var(--text-muted); margin-bottom: 0.5rem;">
+        Mission Objective
+      </h3>
+      <p style="font-size: 0.85rem; color: var(--text-main);">
+        The remote authority provides batch draft files sequentially at <code>/draft/&lt;number&gt;</code>.
+        As each batch downloads, ranks (Private, Sergeant, Lieutenant, General) and health points are assigned in parallel.
+      </p>
+    </div>
+  </div>
+
+  <div style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+    <form method="post" action="{% url 'army:draft' %}" style="display: inline-flex;">
+      {% csrf_token %}
+      <button type="button" id="start-draft-btn" class="btn btn-success">
+        <span>⚔</span> Mobilize Army & Start Drafting
+      </button>
+    </form>
+    <a href="{% url 'army:people_list' %}" class="btn btn-secondary">
+      <span>👥</span> Inspect Roster
+    </a>
+  </div>
+</div>
+
+<!-- Drafting Metrics -->
+<div class="stat-grid">
+  <div class="stat-card glow-cyan">
+    <div class="stat-label">Available Civilians</div>
+    <div id="counter-draft-registered" class="stat-value">{{ registered|default:0 }}</div>
+    <div class="stat-desc">Ready for draft processing</div>
+  </div>
+  <div class="stat-card glow-emerald">
+    <div class="stat-label">Drafted Soldiers</div>
+    <div id="counter-draft-drafted" class="stat-value">{{ drafted|default:0 }}</div>
+    <div class="stat-desc">Assigned combat rank & health</div>
+  </div>
+</div>
+
+<!-- Rank Breakdown Section -->
+<div class="panel">
+  <div class="panel-header">
+    <h2 class="panel-title"><span>📊</span> Battalion Rank Distribution</h2>
+    <span class="text-dim">Classified force breakdown</span>
+  </div>
+  <div id="rank-breakdown-container" class="rank-filters">
+    {% for r in ranks %}
+      <div class="filter-chip active">
+        {{ r.rank }}: {{ r.count }} soldiers
+      </div>
+    {% empty %}
+      <p class="text-dim">No soldiers drafted into ranks yet.</p>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- Live Drafting Batches Telemetry -->
+<div class="panel">
+  <div class="panel-header">
+    <h2 class="panel-title"><span>📡</span> Batch Download & Drafting Telemetry</h2>
+    <span class="text-dim">Live parallel worker status</span>
+  </div>
+
+  <div id="batch-cards-container" class="batch-grid">
+    {% for b in batches %}
+      <div class="batch-card">
+        <div class="batch-top">
+          <span class="batch-num">Batch #{{ b.number }}</span>
+          <span class="badge badge-{{ b.status }}">{{ b.status|upper }}</span>
+        </div>
+        <div class="batch-details">
+          <p>Attempts: {{ b.attempts }}</p>
+          <p>Soldiers: {{ b.people_count }}</p>
+        </div>
+        {% if b.error %}
+          <div class="batch-error">{{ b.error }}</div>
+        {% endif %}
+      </div>
+    {% empty %}
+      <div class="empty-state" style="grid-column: 1 / -1; padding: 2rem;">
+        <p style="color: var(--text-muted);">No drafting batches initiated yet. Click "Mobilize Army & Start Drafting" above.</p>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/draft.js' %}"></script>
+{% endblock %}

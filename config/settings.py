@@ -31,6 +31,8 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = os.getenv("DEBUG", "False").lower() in ("1", "true", "yes")
 
 ALLOWED_HOSTS = [h.strip() for h in os.getenv("ALLOWED_HOSTS", "").split(",") if h.strip()]
+if "testserver" not in ALLOWED_HOSTS:
+    ALLOWED_HOSTS.append("testserver")
 
 
 # Application definition
@@ -60,7 +62,7 @@ ROOT_URLCONF = "config.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [BASE_DIR / "templates"],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -121,6 +123,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.1/howto/static-files/
 
 STATIC_URL = "static/"
+STATICFILES_DIRS = [BASE_DIR / "static"]
 
 
 # Email

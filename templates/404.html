@@ -1,0 +1,23 @@
+{% extends "army/base.html" %}
+
+{% block title %}404 RADAR LOST // WAR SIMULATOR{% endblock %}
+
+{% block content %}
+<div class="notfound-container">
+  <div class="notfound-code">404</div>
+  <h1 style="font-size: 1.5rem; margin-bottom: 0.5rem; color: var(--text-main);">
+    RADAR CONTACT LOST
+  </h1>
+  <p class="notfound-text">
+    The requested sector or tactical coordinate does not exist in the command center database.
+  </p>
+  <div style="display: flex; justify-content: center; gap: 1rem;">
+    <a href="{% url 'army:people_list' %}" class="btn btn-primary">
+      <span>👥</span> Return to Registry
+    </a>
+    <a href="{% url 'army:people_import' %}" class="btn btn-secondary">
+      <span>⚙</span> Import Panel
+    </a>
+  </div>
+</div>
+{% endblock %}

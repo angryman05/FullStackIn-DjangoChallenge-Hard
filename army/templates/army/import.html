@@ -1,0 +1,108 @@
+{% extends "army/base.html" %}
+{% load static %}
+
+{% block title %}IMPORT CONTROL PANEL // WAR SIMULATOR{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <div>
+    <h1 class="page-title">
+      <span>⚙</span> Peacetime Citizen Importer
+    </h1>
+    <p class="page-subtitle">Parallel background ingestion from external population registry.</p>
+  </div>
+  <div>
+    <span id="import-status-badge" class="badge badge-idle">IDLE</span>
+  </div>
+</div>
+
+<!-- Discovered Key Banner (shows if Hellstorm Fireburn is found) -->
+<div id="secret-key-banner" class="panel" style="{% if not key_person or not key_person.key %}display: none;{% endif %} border-color: var(--accent-amber); background: rgba(245, 158, 11, 0.05);">
+  <div class="panel-header" style="border-color: rgba(245, 158, 11, 0.3);">
+    <h2 class="panel-title" style="color: var(--accent-amber);">
+      <span>⚡</span> TARGET RECONNAISSANCE: HELLSTORM FIREBURN
+    </h2>
+    <span class="badge" style="background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); border-color: var(--accent-amber);">
+      SECRET KEY DISCOVERED
+    </span>
+  </div>
+  <p style="margin-bottom: 1rem; color: var(--text-main);">
+    Hellstorm Fireburn has been indexed in the database. His secret access key unlocks Phase 2 instructions:
+  </p>
+  <div style="display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;">
+    <button type="button" id="secret-key-chip" class="copy-chip" data-copy="{{ key_person.key|default:'' }}" style="font-size: 1rem; padding: 0.5rem 1rem;">
+      {{ key_person.key|default:"[KEY PENDING IMPORT]" }}
+    </button>
+    <a href="{% url 'army:draft' %}" class="btn btn-primary btn-sm">Proceed to Phase 2: Draft →</a>
+  </div>
+</div>
+
+<!-- Error Panel -->
+<div id="error-panel" class="error-panel" role="alert">
+  <div>
+    <strong style="color: #fb7185; text-transform: uppercase;">Import Operation Warning:</strong>
+    <p id="error-message-text" class="error-message" style="margin-top: 0.25rem;">Connection error to background task.</p>
+  </div>
+  <button type="button" id="retry-import-btn" class="btn btn-danger btn-sm">Retry Import</button>
+</div>
+
+<!-- Telemetry Stat Counters -->
+<div class="stat-grid">
+  <div class="stat-card glow-cyan">
+    <div class="stat-label">Downloaded Citizens</div>
+    <div id="counter-downloaded" class="stat-value">{{ registered|default:0 }}</div>
+    <div class="stat-desc">Retrieved from remote registry</div>
+  </div>
+  <div class="stat-card glow-emerald">
+    <div class="stat-label">Saved to Database</div>
+    <div id="counter-saved" class="stat-value">{{ registered|default:0 }}</div>
+    <div class="stat-desc">Persisted in local database</div>
+  </div>
+  <div class="stat-card glow-rose">
+    <div class="stat-label">Failed Batches</div>
+    <div id="counter-failed" class="stat-value">0</div>
+    <div class="stat-desc">Network timeouts / errors</div>
+  </div>
+  <div class="stat-card glow-purple">
+    <div class="stat-label">Elapsed Time</div>
+    <div id="elapsed-time" class="stat-value">00:00</div>
+    <div class="stat-desc">Duration of active ingest</div>
+  </div>
+</div>
+
+<!-- Ingestion Control Center -->
+<div class="panel">
+  <div class="panel-header">
+    <h2 class="panel-title"><span>📡</span> Pipeline Synchronization Control</h2>
+    <span class="text-dim">Poll cadence: 1.0s</span>
+  </div>
+
+  <div class="progress-container">
+    <div class="progress-header">
+      <label for="import-progress-bar" style="font-weight: 600; color: var(--text-muted);">
+        Ingestion Stream Progress
+      </label>
+      <span id="progress-percent" style="font-variant-numeric: tabular-nums; color: var(--accent-cyan); font-weight: 600;">
+        {% if registered > 0 %}100% ({{ registered }} records){% else %}Ready{% endif %}
+      </span>
+    </div>
+    <progress id="import-progress-bar" max="100" {% if registered > 0 %}value="100"{% endif %} aria-label="Ingestion Progress"></progress>
+  </div>
+
+  <div style="display: flex; gap: 1rem; align-items: center; margin-top: 1.5rem; flex-wrap: wrap;">
+    <form method="post" action="{% url 'army:import_start' %}" style="display: inline-flex;">
+      {% csrf_token %}
+      <button type="button" id="start-import-btn" class="btn btn-primary">
+        <span>⚡</span> Start Import
+      </button>
+    </form>
+    <a href="{% url 'army:people_list' %}" class="btn btn-secondary">
+      <span>👥</span> View Registered People
+    </a>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/importer.js' %}"></script>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% load static %}
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}WAR SIMULATOR // HARD CHALLENGE{% endblock %}</title>
+  
+  <link rel="stylesheet" href="{% static 'css/styles.css' %}">
+  {% csrf_token %}
+  <meta name="csrf-token" content="{{ csrf_token }}">
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <!-- Command Center Header -->
+  <header class="app-header" role="banner">
+    <div class="brand">
+      <span class="brand-dot" aria-hidden="true"></span>
+      <a href="{% url 'army:people_list' %}" style="color: inherit; text-decoration: none;">War Simulator // Hard</a>
+    </div>
+
+    <nav aria-label="Command Center Navigation">
+      <ul class="nav-links">
+        <li>
+          <a href="{% url 'army:people_import' %}" class="nav-link {% if request.resolver_match.url_name == 'people_import' %}active{% endif %}">
+            <span>⚙</span> Import Panel
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'army:people_list' %}" class="nav-link {% if request.resolver_match.url_name == 'people_list' or request.resolver_match.url_name == 'people_list_alt' %}active{% endif %}">
+            <span>👥</span> Registry
+          </a>
+        </li>
+        <li>
+          <a href="{% url 'army:draft' %}" class="nav-link {% if request.resolver_match.url_name == 'draft' %}active{% endif %}">
+            <span>⚔</span> Phase 2: Draft
+          </a>
+        </li>
+      </ul>
+    </nav>
+
+    <div class="header-status">
+      <span class="badge badge-done">DEFCON 3</span>
+    </div>
+  </header>
+
+  <!-- Server Messages to Toast Bridge -->
+  {% if messages %}
+    <div class="sr-only">
+      {% for message in messages %}
+        <div class="django-message-init" data-message="{{ message }}" data-tag="{{ message.tags }}">{{ message }}</div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  <!-- Main View Area -->
+  <main class="main-container" id="main-content" role="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Global Toast Region -->
+  <div id="toast-container" role="region" aria-label="System Notifications" aria-live="polite"></div>
+
+  <!-- Scripts -->
+  <script src="{% static 'js/main.js' %}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
