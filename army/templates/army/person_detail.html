@@ -1,0 +1,18 @@
+{% extends "army/base.html" %}
+{% comment %}Context: person (Person){% endcomment %}
+
+{% block title %}{{ person.name }}{% endblock %}
+
+{% block content %}
+<h1>{{ person.name }}</h1>
+<dl>
+  <dt>ID</dt><dd>{{ person.external_id }}</dd>
+  <dt>Age</dt><dd>{{ person.age }}</dd>
+  <dt>Rank</dt><dd>{{ person.rank|default:"Not drafted yet" }}</dd>
+  <dt>Health</dt><dd>{{ person.health|default_if_none:"–" }}</dd>
+  {% if person.key %}<dt>Key</dt><dd>{{ person.key }}</dd>{% endif %}
+  <dt>Registered</dt><dd>{{ person.registered_at }}</dd>
+  <dt>Drafted</dt><dd>{{ person.drafted_at|default:"–" }}</dd>
+</dl>
+<a href="{% url 'army:people_list' %}">Back</a>
+{% endblock %}

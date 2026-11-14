@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+    "army",
 ]
 
 MIDDLEWARE = [
@@ -130,3 +131,22 @@ MAILERS = {
         "BACKEND": "django.core.mail.backends.console.EmailBackend",
     },
 }
+
+
+# --- War simulator / Celery -------------------------------------------------
+
+CHALLENGE_API_URL = os.getenv(
+    "CHALLENGE_API_URL",
+    "https://coderun2026-csbwf4haa4d0gubu.westus3-01.azurewebsites.net",
+).rstrip("/")
+CHALLENGE_API_TIMEOUT = int(os.getenv("CHALLENGE_API_TIMEOUT", "15"))
+
+# SQLite broker via SQLAlchemy: no Redis/RabbitMQ needed, same on Windows and Linux.
+CELERY_DIR = BASE_DIR / ".celery"
+CELERY_DIR.mkdir(exist_ok=True)
+CELERY_BROKER_URL = os.getenv("CELERY_BROKER_URL", f"sqla+sqlite:///{(CELERY_DIR / 'broker.sqlite').as_posix()}")
+# Progress is tracked in the DraftBatch model, so no result backend is needed.
+CELERY_TASK_IGNORE_RESULT = True
+CELERY_BROKER_CONNECTION_RETRY_ON_STARTUP = True
+# CELERY_EAGER=True runs tasks inline (no worker) - handy for quick tests.
+CELERY_TASK_ALWAYS_EAGER = os.getenv("CELERY_EAGER", "False").lower() in ("1", "true", "yes")

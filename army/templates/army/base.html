@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Django War Simulator{% endblock %}</title>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header><a href="{% url 'army:people_list' %}">Django War Simulator</a></header>
+  {% for message in messages %}<p class="message">{{ message }}</p>{% endfor %}
+  <main>{% block content %}{% endblock %}</main>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

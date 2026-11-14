@@ -1,0 +1,74 @@
+{% extends "army/base.html" %}
+{% comment %}
+Context:
+  people          queryset of Person (external_id, name, age, rank, health, key, is_drafted)
+  selected_rank   the ?rank= filter, or None
+  registered      int, drafted: int
+  ranks           list of {"rank", "count"}
+  batches         list of {"number", "status", "attempts", "people_count", "error"}
+Live progress (JSON, same fields minus people): GET {% url 'army:draft_status' %}
+{% endcomment %}
+
+{% block content %}
+<section>
+  <form method="post" action="{% url 'army:register' %}">{% csrf_token %}
+    <button type="submit">Register people</button>
+  </form>
+  <form method="post" action="{% url 'army:draft' %}">{% csrf_token %}
+    <button type="submit">Start drafting</button>
+  </form>
+  <p id="summary">Registered: {{ registered }} · Drafted: {{ drafted }}</p>
+</section>
+
+<section>
+  <h2>Batches</h2>
+  <ul id="batches">
+    {% for b in batches %}
+      <li>Batch {{ b.number }}: {{ b.status }} (attempt {{ b.attempts }}){% if b.error %} – {{ b.error }}{% endif %}</li>
+    {% empty %}
+      <li>No drafting yet.</li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section>
+  <h2>Ranks</h2>
+  <a href="{% url 'army:people_list' %}">All</a>
+  {% for r in ranks %}
+    <a href="?rank={{ r.rank|urlencode }}">{{ r.rank }} ({{ r.count }})</a>
+  {% endfor %}
+</section>
+
+<section>
+  <h2>People{% if selected_rank %} – {{ selected_rank }}{% endif %}</h2>
+  <table>
+    <tr><th>#</th><th>Name</th><th>Age</th><th>Rank</th><th>Health</th></tr>
+    {% for p in people %}
+      <tr>
+        <td>{{ p.external_id }}</td>
+        <td><a href="{% url 'army:person_detail' p.pk %}">{{ p.name }}</a></td>
+        <td>{{ p.age }}</td>
+        <td>{{ p.rank|default:"–" }}</td>
+        <td>{{ p.health|default_if_none:"–" }}</td>
+      </tr>
+    {% empty %}
+      <tr><td colspan="5">Nobody registered yet.</td></tr>
+    {% endfor %}
+  </table>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Refresh while drafting is in progress.
+  async function poll() {
+    const s = await (await fetch("{% url 'army:draft_status' %}")).json();
+    document.getElementById("summary").textContent =
+      `Registered: ${s.registered} · Drafted: ${s.drafted}`;
+    const busy = s.batches.some(b => ["downloading", "retrying", "downloaded"].includes(b.status));
+    if (busy) setTimeout(poll, 2000);
+    else if (s.drafted !== {{ drafted }} || s.registered !== {{ registered }}) location.reload();
+  }
+  setTimeout(poll, 2000);
+</script>
+{% endblock %}
