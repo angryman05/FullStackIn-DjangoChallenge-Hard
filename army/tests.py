@@ -52,6 +52,15 @@ class DraftingTests(TestCase):
             [(0, "drafted"), (1, "drafted")],
         )
 
+    def test_drafting_skips_registration_when_people_exist(self):
+        with mock.patch.object(tasks, "fetch", fake_api()):
+            tasks.register_people.delay()
+        # /people is down now, but drafting must still work for registered people.
+        with mock.patch.object(tasks, "fetch", fake_api({"people": 99})):
+            tasks.launch_drafting()
+
+        self.assertEqual(Person.objects.filter(drafted_at__isnull=False).count(), 4)
+
     def test_batch_timeout_is_retried(self):
         with mock.patch.object(tasks, "fetch", fake_api({"draft/1": 2})):
             tasks.start_drafting.delay()
@@ -68,6 +77,8 @@ class DraftingTests(TestCase):
         batch = DraftBatch.objects.get(number=0)
         self.assertEqual(batch.status, "failed")
         self.assertEqual(batch.attempts, tasks.MAX_RETRIES + 1)
+        # Batches run in parallel: a failed batch no longer blocks the others.
+        self.assertEqual(DraftBatch.objects.get(number=1).status, "drafted")
         self.assertEqual(Person.objects.count(), 4)  # registration still happened
 
     def test_status_endpoint_and_pages(self):

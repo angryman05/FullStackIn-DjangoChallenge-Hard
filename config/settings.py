@@ -84,6 +84,9 @@ DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": BASE_DIR / "db.sqlite3",
+        # The threaded Celery worker writes from several threads at once:
+        # wait for locks instead of failing with "database is locked".
+        "OPTIONS": {"timeout": 30, "transaction_mode": "IMMEDIATE"},
     }
 }
 
@@ -143,6 +146,8 @@ CHALLENGE_API_URL = os.getenv(
     "https://coderun2026-csbwf4haa4d0gubu.westus3-01.azurewebsites.net",
 ).rstrip("/")
 CHALLENGE_API_TIMEOUT = int(os.getenv("CHALLENGE_API_TIMEOUT", "15"))
+# How many /draft/<n> batches to download in parallel (the API has 0-9).
+CHALLENGE_BATCH_COUNT = int(os.getenv("CHALLENGE_BATCH_COUNT", "10"))
 
 # SQLite broker via SQLAlchemy: no Redis/RabbitMQ needed, same on Windows and Linux.
 CELERY_DIR = BASE_DIR / ".celery"

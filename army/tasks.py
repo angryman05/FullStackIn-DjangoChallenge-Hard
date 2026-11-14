@@ -1,16 +1,16 @@
 """Background tasks for registering and drafting people.
 
-Flow (started by ``start_drafting``):
+Flow (started by ``launch_drafting``):
 
-    register_people  ->  download_batch(0)
-                             |-- draft_batch(0, people)   (separate task)
-                             '-- download_batch(1)
-                                     |-- draft_batch(1, people)
-                                     '-- download_batch(2) ... until next_batch is null
+    [register_people]  ->  download_batch(0) | download_batch(1) | ... | download_batch(N-1)
+                           (all launched at the same time, run in parallel by a threaded worker)
+                               each one, as soon as its batch is downloaded:
+                               '-- draft_batch(n, people)   (separate task)
 
-Every batch is downloaded and drafted by its own task call, and drafting of a
-batch starts as soon as that batch is downloaded. Downloads retry with
-exponential backoff when the remote API times out or errors.
+N = CHALLENGE_BATCH_COUNT (default 10). If the API reports a ``next_batch`` that was
+not launched yet, it is downloaded too, so more batches than expected still work.
+One slow/failed batch doesn't block the others. Downloads retry with exponential
+backoff when the remote API times out or errors.
 """
 
 import logging
@@ -74,8 +74,7 @@ def download_batch(self, number):
     batch, _ = DraftBatch.objects.get_or_create(number=number)
     batch.attempts = self.request.retries + 1
     batch.status = DraftBatch.Status.DOWNLOADING
-    batch.error = ""
-    batch.save()
+    batch.save(update_fields=["attempts", "status", "updated_at"])
 
     try:
         payload = fetch(f"draft/{number}")
@@ -83,29 +82,39 @@ def download_batch(self, number):
         batch.error = str(exc)
         if self.request.retries >= self.max_retries:
             batch.status = DraftBatch.Status.FAILED
-            batch.save()
+            batch.save(update_fields=["status", "error", "updated_at"])
             logger.error("Batch %s failed after %s attempts", number, batch.attempts)
             raise
         batch.status = DraftBatch.Status.RETRYING
-        batch.save()
+        batch.save(update_fields=["status", "error", "updated_at"])
         logger.warning("Batch %s failed (%s), retrying", number, exc)
         raise self.retry(exc=exc, countdown=backoff(self.request.retries))
     except ChallengeAPIError as exc:
+        if "Invalid batch id" in str(exc):
+            # Launched past the last batch - it simply doesn't exist.
+            batch.delete()
+            logger.info("Batch %s does not exist, skipped", number)
+            return 0
         batch.status = DraftBatch.Status.FAILED
         batch.error = str(exc)
-        batch.save()
+        batch.save(update_fields=["status", "error", "updated_at"])
         raise
 
     people = payload["data"]
     batch.status = DraftBatch.Status.DOWNLOADED
+    batch.error = ""  # keep the last error visible until a download succeeds
     batch.people_count = len(people)
-    batch.save()
+    batch.save(update_fields=["status", "error", "people_count", "updated_at"])
 
-    # Drafting this batch starts right away, in its own task...
+    # Drafting this batch starts right away, in its own task.
     draft_batch.delay(number, people)
-    # ...while the next batch is downloaded in parallel.
-    if payload.get("next_batch") is not None:
-        download_batch.delay(payload["next_batch"])
+
+    # Safety net: if the API has more batches than we launched, fetch those too.
+    next_batch = payload.get("next_batch")
+    if next_batch is not None:
+        _, created = DraftBatch.objects.get_or_create(number=next_batch)
+        if created:
+            download_batch.delay(next_batch)
     return len(people)
 
 
@@ -133,8 +142,37 @@ def draft_batch(number, people):
     return len(people)
 
 
+def download_all_batches():
+    """Launch every batch download at once (they run in parallel)."""
+    numbers = range(settings.CHALLENGE_BATCH_COUNT)
+    DraftBatch.objects.bulk_create(
+        [DraftBatch(number=n, status=DraftBatch.Status.DOWNLOADING) for n in numbers],
+        ignore_conflicts=True,
+    )
+    for n in numbers:
+        download_batch.delay(n)
+
+
+@shared_task
+def download_all_batches_task(_previous_result=None):
+    download_all_batches()
+
+
+def launch_drafting():
+    """Called synchronously from the view, so the UI sees every batch immediately.
+
+    If people are already registered, all batch downloads start right away;
+    otherwise registration runs first.
+    """
+    DraftBatch.objects.all().delete()
+    if Person.objects.exists():
+        download_all_batches()
+    else:
+        DraftBatch.objects.create(number=0, status=DraftBatch.Status.DOWNLOADING)
+        chain(register_people.si(), download_all_batches_task.si()).delay()
+
+
 @shared_task
 def start_drafting():
-    """Entry point: register everyone, then start the batch download chain."""
-    DraftBatch.objects.all().delete()
-    chain(register_people.si(), download_batch.si(0)).delay()
+    """Task wrapper around launch_drafting (kept for compatibility)."""
+    launch_drafting()

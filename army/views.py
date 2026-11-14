@@ -5,7 +5,7 @@ from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 
 from .models import DraftBatch, Person
-from .tasks import register_people, start_drafting
+from .tasks import launch_drafting, register_people
 
 
 def draft_summary():
@@ -119,7 +119,7 @@ def import_status(request):
 def draft_view(request):
     """Phase 2 drafting: GET renders war room UI, POST starts drafting tasks."""
     if request.method == "POST":
-        start_drafting.delay()
+        launch_drafting()
         messages.info(request, "Soldier drafting started in the background.")
         if request.headers.get("accept") == "application/json" or request.content_type == "application/json":
             return JsonResponse({"status": "running", "message": "Drafting started"}, status=202)
